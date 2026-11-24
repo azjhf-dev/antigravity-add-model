@@ -385,3 +385,8 @@ Antigravity logo from [Google's official press assets](https://antigravity.googl
 Maintained by **[vahapogut](https://github.com/vahapogut)** · [LinkedIn](https://www.linkedin.com/in/abdulvahap-ogut-343992398/)
 
 <p align="center"><a href="#quick-links">↑ Back to quick links</a></p>
+
+
+## Local-only mode
+
+Set `AG_LOCAL_ONLY=1` for the proxy to never contact Google and never read Antigravity's OAuth client secret. See [docs/linux.md](docs/linux.md#local-only-mode-ag_local_only1). Not tested against a real Antigravity install.
