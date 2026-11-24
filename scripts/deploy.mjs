@@ -151,8 +151,23 @@ function locations(resources) {
   return {
     archive: path.join(resources, 'app.asar'),
     unpacked: path.join(resources, 'app.asar.unpacked'),
-    binary: path.join(resources, 'bin', 'language_server.exe'),
+    binary: path.join(resources, 'bin', languageServerName),
   };
+}
+// Windows ships bin/language_server.exe. Linux builds may use another name (exact names are
+// unverified). The name is detected once from the real resources directory and then reused for
+// the backup and candidate directories so all three agree.
+const LANGUAGE_SERVER_NAMES = ['language_server.exe', 'language_server', 'language_server_linux_x64', 'language_server_linux_arm', 'language_server_linux_arm64'];
+let languageServerName = LANGUAGE_SERVER_NAMES[0];
+export function detectLanguageServer(resources, env = process.env) {
+  const named = env.ANTIGRAVITY_LANGUAGE_SERVER_NAME;
+  if (named) {
+    if (!/^[A-Za-z0-9._-]+$/.test(named)) fail('USAGE', 'ANTIGRAVITY_LANGUAGE_SERVER_NAME must be a plain file name inside resources/bin.');
+    return (languageServerName = named);
+  }
+  languageServerName =
+    LANGUAGE_SERVER_NAMES.find((name) => exists(path.join(resources, 'bin', name))) || LANGUAGE_SERVER_NAMES[0];
+  return languageServerName;
 }
 export function fingerprint(resources) {
   const files = locations(resources);
@@ -174,8 +189,9 @@ function backupId(version, original) {
   return `v-${slug}-${createHash('sha256').update(JSON.stringify(original)).digest('hex')}`;
 }
 export function resolveResources(input, platform = process.platform, env = process.env) {
-  const candidates = input
-    ? [path.resolve(input), path.resolve(input, 'Contents', 'Resources'), path.resolve(input, 'resources')]
+  const fromEnv = env.ANTIGRAVITY_RESOURCES ? [env.ANTIGRAVITY_RESOURCES] : [];
+  const candidates = input || fromEnv.length
+    ? [input || fromEnv[0]].flatMap((root) => [path.resolve(root), path.resolve(root, 'Contents', 'Resources'), path.resolve(root, 'resources')])
     : platform === 'darwin'
       ? [
           '/Applications/Antigravity.app/Contents/Resources',
@@ -189,15 +205,23 @@ export function resolveResources(input, platform = process.platform, env = proce
           ]
         : [
             path.join(os.homedir(), '.local/share/Programs/antigravity/resources'),
+            path.join(env.XDG_DATA_HOME || path.join(os.homedir(), '.local/share'), 'antigravity/resources'),
+            path.join(env.XDG_DATA_HOME || path.join(os.homedir(), '.local/share'), 'Antigravity/resources'),
             '/opt/antigravity/resources',
+            '/opt/Antigravity/resources',
+            '/usr/share/antigravity/resources',
             '/usr/lib/antigravity/resources',
             '/usr/local/lib/antigravity/resources',
           ];
   for (const candidate of candidates) {
     if (exists(path.join(candidate, 'app.asar')) || exists(path.join(candidate, 'app', 'out')))
-      return fs.realpathSync(candidate);
+      {
+        const real = fs.realpathSync(candidate);
+        detectLanguageServer(real, env);
+        return real;
+      }
   }
-  fail('APP_NOT_FOUND', `No Antigravity app.asar found. Pass --resources PATH. Checked: ${candidates.join(', ')}`);
+  fail('APP_NOT_FOUND', `No Antigravity app.asar found. Pass --resources PATH or set ANTIGRAVITY_RESOURCES. Checked: ${candidates.join(', ')}`);
 }
 function unsupported() {
   fail(

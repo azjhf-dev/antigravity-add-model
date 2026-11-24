@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import * as asar from '@electron/asar';
-import { deploy, fingerprint, parseArgs, preflight, REQUIRED_BUILD_FILES } from '../../scripts/deploy.mjs';
+import { deploy, fingerprint, parseArgs, preflight, resolveResources, REQUIRED_BUILD_FILES } from '../../scripts/deploy.mjs';
 
 // Real ASAR packing can exceed the default 5 seconds on a busy Windows disk.
 // Allow it to finish before cleanup removes files still being packed.
@@ -448,6 +448,23 @@ describe('optional fixed-port Windows language-server patch', () => {
     expect(state(f.resources).backupId).toBe(first.backupId);
     expect(JSON.parse(readArchive(f.resources, 'antigravity-proxy.json'))).toEqual({ requiredPort: 50999 });
     await deploy({ resources: f.resources, restore: true });
+    expect(fingerprint(f.resources)).toEqual(original);
+  });
+
+  it('patches and restores a Linux-style ELF language server (synthetic fixture, not a real vendor binary)', async () => {
+    const f = await fixture();
+    const binary = path.join(f.resources, 'bin/language_server_linux_x64');
+    put(binary, Buffer.concat([Buffer.from([0x7f, 0x45, 0x4c, 0x46]), Buffer.from(`\0${endpoint}\0${endpoint}\0`)]));
+    resolveResources(f.resources); // detects the Linux binary name, as the CLI does
+    const original = fingerprint(f.resources);
+    const originalBytes = fs.readFileSync(binary);
+    await deploy({ ...f, patchLanguageServer: true });
+    const patched = fs.readFileSync(binary);
+    expect(patched.length).toBe(originalBytes.length);
+    expect(patched.includes(Buffer.from(endpoint))).toBe(false);
+    expect(patched.includes(Buffer.from(patchedEndpoint))).toBe(true);
+    await deploy({ resources: f.resources, restore: true });
+    expect(fs.readFileSync(binary)).toEqual(originalBytes);
     expect(fingerprint(f.resources)).toEqual(original);
   });
 

@@ -1,0 +1,13 @@
+# Optional systemd user unit for the local proxy service. UNTESTED against a real Antigravity install.
+# Install: copy to ~/.config/systemd/user/, edit WorkingDirectory, then
+#   systemctl --user daemon-reload && systemctl --user enable --now antigravity-add-model
+[Unit]
+Description=antigravity-add-model local proxy (loopback only)
+
+[Service]
+WorkingDirectory=%h/antigravity-add-model
+ExecStart=/usr/bin/env node scripts/desktop-service.mjs run
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

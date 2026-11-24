@@ -285,10 +285,11 @@ export function inspectIde(options = {}) {
   const platform = options.platform || process.platform;
   const env = options.env || process.env;
   const home = options.home || os.homedir();
-  const initial = options.resources ? [path.resolve(options.resources)] : platform === 'win32'
+  const envRoot = env.ANTIGRAVITY_IDE_RESOURCES;
+  const initial = options.resources || envRoot ? [path.resolve(options.resources || envRoot)] : platform === 'win32'
     ? [path.join(env.LOCALAPPDATA || path.join(home, 'AppData/Local'), 'Programs/Antigravity IDE'), path.join(env.LOCALAPPDATA || path.join(home, 'AppData/Local'), 'Programs/Antigravity')]
     : platform === 'darwin' ? ['/Applications/Antigravity IDE.app', '/Applications/Antigravity.app', path.join(home, 'Applications/Antigravity IDE.app')]
-      : ['/opt/antigravity-ide', '/opt/antigravity', '/usr/share/antigravity', '/usr/lib/antigravity', path.join(home, '.local/share/antigravity-ide')];
+      : ['/opt/antigravity-ide', '/opt/Antigravity', '/opt/antigravity', '/usr/share/antigravity', '/usr/lib/antigravity', path.join(home, '.local/share/antigravity-ide')];
   const candidates = initial.flatMap(root => [root, path.join(root, 'resources'), path.join(root, 'Contents/Resources')]);
   for (const resources of candidates) {
     const app = path.join(resources, 'app');

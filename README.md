@@ -1,3 +1,11 @@
+# antigravity-add-model: Linux fork (azjhf-dev)
+
+**Fork base (pinned):** upstream `vahapogut/antigravity-add-model` commit `e77954b9a58e5b9408e8d3bc1cedbb5a6c456125` (2026-11-11, merge of PR #54; `git describe`: v2.0.3-113-ge77954b, Apache-2.0). All changes in this fork are on top of that commit.
+
+**Fork changes:** Linux install-path discovery and overrides (`ANTIGRAVITY_RESOURCES`, `ANTIGRAVITY_IDE_RESOURCES`, `ANTIGRAVITY_LANGUAGE_SERVER_NAME`), ELF acceptance for the optional language-server patch, a systemd user unit, and `docs/linux.md`. **Untested on a real Antigravity install.** See `docs/linux.md` and `AUDIT.md`.
+
+---
+
 <p align="center">
   <img src="gateway/dashboard/antigravity-logo.png" width="96" height="96" alt="Google Antigravity logo">
 </p>

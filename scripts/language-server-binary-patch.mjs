@@ -34,21 +34,23 @@ function fail(code, message) {
  */
 export function planLanguageServerBinary(input, requested) {
   if (input === null) {
-    if (requested) fail('BINARY_NOT_FOUND', '--patch-language-server requires resources/bin/language_server.exe.');
+    if (requested) fail('BINARY_NOT_FOUND', '--patch-language-server requires a language server binary in resources/bin (language_server.exe on Windows; see ANTIGRAVITY_LANGUAGE_SERVER_NAME).');
     return { mode: 'unknown', bytes: null };
   }
   const originalFound = input.includes(ORIGINAL_LANGUAGE_SERVER_URL);
   const patchedFound = input.includes(PATCHED_LANGUAGE_SERVER_URL);
   if (requested) {
     if (
-      input[0] !== 0x4d ||
-      input[1] !== 0x5a ||
+      !(
+        (input[0] === 0x4d && input[1] === 0x5a) || // Windows PE
+        (input[0] === 0x7f && input[1] === 0x45 && input[2] === 0x4c && input[3] === 0x46) // Linux ELF (untested)
+      ) ||
       ORIGINAL_LANGUAGE_SERVER_URL.length !== PATCHED_LANGUAGE_SERVER_URL.length ||
       (!originalFound && !patchedFound)
     ) {
       fail(
         'BINARY_NOT_SUPPORTED',
-        'Expected a Windows PE language server with the recognized Cloud Code endpoint. No binary was changed.',
+        'Expected a Windows PE or Linux ELF language server with the recognized Cloud Code endpoint. No binary was changed.',
       );
     }
     if (originalFound) {
