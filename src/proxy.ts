@@ -528,6 +528,11 @@ function forwardCloudCodeCatalog(
   body: Buffer,
   targetUrl: string,
 ): void {
+  if (isLocalOnly()) {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(customCloudCodeCatalog({})));
+    return;
+  }
   const parsedUrl = new URL(req.url!, targetUrl);
   const fwdHeaders = forwardingHeaders(req.headers);
   fwdHeaders['host'] = parsedUrl.host;
@@ -590,12 +595,27 @@ function forwardCloudCodeCatalog(
   googleReq.end();
 }
 
+/** AG_LOCAL_ONLY=1: never contact Google from the proxy; only saved custom models are served. */
+export function isLocalOnly(env: NodeJS.ProcessEnv = process.env): boolean {
+  return /^(1|true|yes|on)$/i.test((env.AG_LOCAL_ONLY || '').trim());
+}
+
+function refuseLocalOnly(res: http.ServerResponse): void {
+  if (res.headersSent || res.writableEnded || res.destroyed) return;
+  res.writeHead(403, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ error: { message: 'Blocked: AG_LOCAL_ONLY is set, Google is never contacted. Select a saved custom model.' } }));
+}
+
 function proxyToGoogle(
   req: http.IncomingMessage,
   res: http.ServerResponse,
   reqBody: Buffer,
   nativeSubagent?: NativeSubagentRouting,
 ): void {
+  if (isLocalOnly()) {
+    refuseLocalOnly(res);
+    return;
+  }
   const generation = req.url!.includes('generateContent') || req.url!.includes('streamGenerateContent');
   const cloudCode = req.url!.includes('v1internal') || req.url!.includes('daily-cloudcode');
   if (!cloudCodeRouting || !cloudCode || !generation) {
@@ -630,6 +650,10 @@ function forwardToGoogle(
   nativeSubagent?: NativeSubagentRouting,
   cloudCodeOrigin?: string,
 ): void {
+  if (isLocalOnly()) {
+    refuseLocalOnly(res);
+    return;
+  }
   const isCloudCodeUrl = req.url!.includes('v1internal') || req.url!.includes('daily-cloudcode');
   const targetUrl = isCloudCodeUrl
     ? cloudCodeOrigin || cloudCodeRouting?.resolve(req.headers) || 'https://daily-cloudcode-pa.googleapis.com'
@@ -1298,7 +1322,7 @@ function handleRequest(req: http.IncomingMessage, res: http.ServerResponse): voi
     if (req.url!.includes('/v1internal:fetchAvailableModels')) {
       log.info('[Proxy] Intercepting fetchAvailableModels request');
       const routing = cloudCodeRouting;
-      if (!routing) {
+      if (!routing || isLocalOnly()) {
         forwardCloudCodeCatalog(req, res, fullBody, 'https://daily-cloudcode-pa.googleapis.com');
         return;
       }
@@ -1321,6 +1345,10 @@ function handleRequest(req: http.IncomingMessage, res: http.ServerResponse): voi
     // 2. Intercept /v1beta/models or /v1/models list request
     if (req.method === 'GET' && (req.url!.endsWith('/models') || req.url!.includes('/models?'))) {
       log.info('[Proxy] Intercepting models list request');
+      if (isLocalOnly()) {
+        refuseLocalOnly(res);
+        return;
+      }
 
       const targetUrl = 'https://generativelanguage.googleapis.com';
       const parsedUrl = new URL(req.url!, targetUrl);

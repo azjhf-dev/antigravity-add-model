@@ -111,6 +111,8 @@ function inspect(app: string): GoogleNativeClient {
 
 export function resolveGoogleNativeClient(options: GoogleNativeClientOptions = {}): GoogleNativeClient {
   const env = options.env || process.env;
+  if (/^(1|true|yes|on)$/i.test((env.AG_LOCAL_ONLY || '').trim()))
+    throw new Error('AG_LOCAL_ONLY is set: Antigravity sign-in (secret extraction) is disabled.');
   const platform = options.platform || process.platform;
   const home = options.home || os.homedir();
   const explicit = options.resources || env.ANTIGRAVITY_IDE_RESOURCES;

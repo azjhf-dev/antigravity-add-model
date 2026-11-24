@@ -29,3 +29,13 @@ if not, the installer refuses and changes nothing.
 
 Close Antigravity first. Use `npm run patch:check` before applying and `npm run patch:restore` to undo.
 Do not run this against an account you cannot afford to have rate-limited or flagged.
+
+## Local-only mode (`AG_LOCAL_ONLY=1`)
+
+Set `AG_LOCAL_ONLY=1` in the proxy's environment (for the systemd unit, add `Environment=AG_LOCAL_ONLY=1`). Then the proxy:
+
+- never forwards anything to `*.googleapis.com` (native Gemini requests, sign-in/quota passthrough, model list get HTTP 403, or an empty native catalog plus your saved models);
+- refuses to read Antigravity's bundled OAuth client ID/secret, so "Sign in with Antigravity" is disabled.
+
+Saved custom models with an OpenAI-compatible or Anthropic endpoint keep working. Do not save models with provider `google` or `google-cloudcode` in this mode; those provider types still call Google on their own request path (not guarded in this change).
+Limits: the Antigravity app itself may still contact Google for its own login and telemetry. This switch only controls this proxy. Not tested against a real Antigravity install; only compiled.
